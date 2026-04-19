@@ -1,0 +1,58 @@
+# このワークフローはmainブランチに変更がプッシュされたときに
+# 自動で `npm run build` を行い、GitHub Pagesに公開するためのものです。
+name: Deploy to GitHub Pages
+
+on:
+  # mainブランチにプッシュされたときに実行
+  push:
+    branches: ['main']
+  # GitHub Actionsの画面から手動でも実行できるようにする
+  workflow_dispatch:
+
+# GitHub Pagesへのデプロイに必要な権限を付与
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時に複数のデプロイが走らないようにする設定
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.jsのセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: パッケージのインストール
+        run: npm ci
+
+      - name: プロジェクトのビルド（distディレクトリの生成）
+        run: npm run build
+
+      - name: GitHub Pagesの設定
+        uses: actions/configure-pages@v4
+
+      - name: distフォルダのアップロード
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 公開するフォルダを指定 (Viteのデフォルトの出力先は './dist')
+          path: './dist'
+
+      - name: GitHub Pagesへデプロイ
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+        # 
